@@ -45,6 +45,7 @@
     }
     /* Contenedor de simulaciones */
     #sim-container {
+      position: relative;
       height: calc(100% - 60px); /* Ajusta según la altura de la cabecera */
       display: flex;
       flex-direction: row;
@@ -779,7 +780,7 @@
   </template>
 
   <script>
-    // Construimos un objeto con cada simulación leyendo el contenido de cada <template>
+    // Obtenemos cada simulación leyendo el contenido de su <template>
     const simulations = {
       deepseek: document.getElementById('sim-deepseek').innerHTML,
       o1: document.getElementById('sim-o1').innerHTML,
@@ -837,12 +838,48 @@
       const iframeLeft = document.getElementById('iframe-left');
       const iframeRight = document.getElementById('iframe-right');
 
-      // Si la función launch existe en el iframe, la invocamos directamente.
       if (iframeLeft.style.display !== 'none' && typeof iframeLeft.contentWindow.launch === 'function') {
         iframeLeft.contentWindow.launch();
       }
       if (iframeRight.style.display !== 'none' && typeof iframeRight.contentWindow.launch === 'function') {
         iframeRight.contentWindow.launch();
+      }
+    });
+
+    // Solución para móviles:
+    // Capturamos eventos táctiles en el contenedor de simulaciones y los traducimos a "mousemove"
+    document.getElementById('sim-container').addEventListener('touchmove', function(e) {
+      if (e.touches.length > 0) {
+        let touch = e.touches[0];
+        // Recorremos cada iframe visible
+        const visibleIframes = [];
+        const iframeLeft = document.getElementById('iframe-left');
+        if (iframeLeft.style.display !== 'none') {
+          visibleIframes.push(iframeLeft);
+        }
+        const iframeRight = document.getElementById('iframe-right');
+        if (iframeRight.style.display !== 'none') {
+          visibleIframes.push(iframeRight);
+        }
+        visibleIframes.forEach(function(iframe) {
+          let rect = iframe.getBoundingClientRect();
+          // Convertimos las coordenadas táctiles a las coordenadas del iframe
+          let relativeX = touch.clientX - rect.left;
+          let relativeY = touch.clientY - rect.top;
+          // Buscamos el contenedor interno según los ids usados en los códigos de simulación
+          let doc = iframe.contentDocument;
+          let container = doc.getElementById('container') || doc.getElementById('simulationContainer') || doc.getElementById('simulation-container');
+          if (container) {
+            let evt = new MouseEvent("mousemove", {
+              view: iframe.contentWindow,
+              bubbles: true,
+              cancelable: true,
+              clientX: relativeX,
+              clientY: relativeY
+            });
+            container.dispatchEvent(evt);
+          }
+        });
       }
     });
   </script>
