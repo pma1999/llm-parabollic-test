@@ -30,6 +30,19 @@
       margin-right: 15px;
       font-size: 1rem;
     }
+    /* Botón de lanzar simulación */
+    #launch-btn {
+      padding: 5px 10px;
+      font-size: 1rem;
+      border: none;
+      background: #555;
+      color: #fff;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    #launch-btn:hover {
+      background: #666;
+    }
     /* Contenedor de simulaciones */
     #sim-container {
       height: calc(100% - 60px); /* Ajusta según la altura de la cabecera */
@@ -89,6 +102,8 @@
         <option value="o3minihigh">o3‑mini (high)</option>
       </select>
     </div>
+    <!-- Botón de activación para móviles y usuarios que no quieran usar la tecla espacio -->
+    <button id="launch-btn">Lanzar Simulación</button>
   </div>
 
   <!-- Contenedor de iframes para mostrar las simulaciones -->
@@ -816,6 +831,20 @@
 
     // Cargar inicialmente la simulación seleccionada
     updateSimulations();
+
+    // Botón para lanzar la simulación (funciona tanto en visualización individual como dual)
+    document.getElementById('launch-btn').addEventListener('click', () => {
+      const iframeLeft = document.getElementById('iframe-left');
+      const iframeRight = document.getElementById('iframe-right');
+
+      // Si la función launch existe en el iframe, la invocamos directamente.
+      if (iframeLeft.style.display !== 'none' && typeof iframeLeft.contentWindow.launch === 'function') {
+        iframeLeft.contentWindow.launch();
+      }
+      if (iframeRight.style.display !== 'none' && typeof iframeRight.contentWindow.launch === 'function') {
+        iframeRight.contentWindow.launch();
+      }
+    });
   </script>
 </body>
 </html>
