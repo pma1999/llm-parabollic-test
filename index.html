@@ -70,6 +70,7 @@
         <option value="o1">o1</option>
         <option value="o3mini">o3‑mini</option>
         <option value="o3minihigh">o3‑mini (high)</option>
+        <option value="grok">Grok</option>
       </select>
     </div>
     <!-- Controles para modo dual -->
@@ -80,6 +81,7 @@
         <option value="o1">o1</option>
         <option value="o3mini">o3‑mini</option>
         <option value="o3minihigh">o3‑mini (high)</option>
+        <option value="grok">Grok</option>
       </select>
       <label for="sim-right">Simulación Derecha:</label>
       <select id="sim-right">
@@ -87,6 +89,7 @@
         <option value="o1">o1</option>
         <option value="o3mini">o3‑mini</option>
         <option value="o3minihigh">o3‑mini (high)</option>
+        <option value="grok">Grok</option>
       </select>
     </div>
   </div>
@@ -97,7 +100,7 @@
     <iframe id="iframe-right" class="hidden"></iframe>
   </div>
 
-  <!-- Las simulaciones se insertan sin modificar en plantillas ocultas -->
+  <!-- Plantillas de simulaciones (sin modificar el código original) -->
   <template id="sim-deepseek">
 <!DOCTYPE html>
 <html>
@@ -763,13 +766,126 @@
 </html>
   </template>
 
+  <!-- NUEVA SIMULACIÓN: Grok -->
+  <template id="sim-grok">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parabolic Motion Simulation</title>
+    <style>
+        #simulation {
+            width: 800px;
+            height: 600px;
+            position: relative;
+            background: #f0f0f0;
+            overflow: hidden; /* Optional: keeps ball within container visually */
+        }
+        #ball {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: red;
+            position: absolute;
+        }
+    </style>
+</head>
+<body>
+    <div id="simulation">
+        <div id="ball"></div>
+    </div>
+    <script>
+        // Get DOM elements
+        const simulation = document.getElementById('simulation');
+        const ball = document.getElementById('ball');
+
+        // Get container dimensions
+        const W = simulation.clientWidth;
+        const H = simulation.clientHeight;
+        const y0 = H / 2; // Starting y-position
+
+        // Initial state: [x, y, vx, vy]
+        let state = [0, y0, 0, 0];
+
+        // Constants
+        const pixelsPerMeter = 100; // Scale factor for units
+        const g = 9.81 * pixelsPerMeter; // Gravity: 9.81 m/s² * 100 pixels/m = 981 pixels/s²
+
+        // Derivative function for RK4: [dx/dt, dy/dt, dvx/dt, dvy/dt]
+        function derivative(state) {
+            return [state[2], state[3], 0, -g]; // vx, vy, ax=0, ay=-g
+        }
+
+        // RK4 step to update state
+        function rk4Step(state, dt) {
+            let k1 = derivative(state);
+            let temp1 = state.map((val, idx) => val + 0.5 * dt * k1[idx]);
+            let k2 = derivative(temp1);
+            let temp2 = state.map((val, idx) => val + 0.5 * dt * k2[idx]);
+            let k3 = derivative(temp2);
+            let temp3 = state.map((val, idx) => val + dt * k3[idx]);
+            let k4 = derivative(temp3);
+            let increment = k1.map((val, idx) => (val + 2 * k2[idx] + 2 * k3[idx] + k4[idx]) / 6);
+            return state.map((val, idx) => val + dt * increment[idx]);
+        }
+
+        // Animation loop
+        let lastTime = null;
+        function animate(currentTime) {
+            if (lastTime !== null) {
+                let dt = (currentTime - lastTime) / 1000; // Time step in seconds
+                state = rk4Step(state, dt);
+                // Update ball position using transform: translate
+                ball.style.transform = `translate(${state[0]}px, ${state[1]}px)`;
+            }
+            lastTime = currentTime;
+            requestAnimationFrame(animate);
+        }
+        // Start animation
+        requestAnimationFrame(animate);
+
+        // Track mouse position
+        let mouseX, mouseY;
+        simulation.addEventListener('mousemove', (event) => {
+            mouseX = event.offsetX;
+            mouseY = event.offsetY;
+        });
+
+        // Handle space key press to launch the ball
+        document.addEventListener('keydown', (event) => {
+            if (event.code === 'Space') {
+                event.preventDefault(); // Prevent default space key behavior (e.g., scrolling)
+                if (mouseX !== undefined && mouseY !== undefined) {
+                    // Direction vector from starting position (0, y0) to mouse
+                    let dx = mouseX - 0;
+                    let dy = mouseY - y0;
+                    let dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist > 1) { // Avoid division by zero or near-zero
+                        // Random initial speed between 100 and 200 pixels/s
+                        let v0 = 100 + Math.random() * 100;
+                        // Initial velocity components
+                        let v0x = v0 * (dx / dist);
+                        let v0y = v0 * (dy / dist);
+                        // Reset state to launch position with new velocity
+                        state = [0, y0, v0x, v0y];
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
+  </template>
+
   <script>
     // Construimos un objeto con cada simulación leyendo el contenido de cada <template>
     const simulations = {
       deepseek: document.getElementById('sim-deepseek').innerHTML,
       o1: document.getElementById('sim-o1').innerHTML,
       o3mini: document.getElementById('sim-o3mini').innerHTML,
-      o3minihigh: document.getElementById('sim-o3minihigh').innerHTML
+      o3minihigh: document.getElementById('sim-o3minihigh').innerHTML,
+      grok: document.getElementById('sim-grok').innerHTML
     };
 
     // Función para actualizar los iframes según el modo y selección elegida
