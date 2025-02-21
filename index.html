@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Comparador de Simulaciones</title>
+  <style>
+    /* Reset básico y tipografía */
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: Arial, sans-serif;
+    }
+    /* Cabecera de controles */
+    #header {
+      background: #333;
+      color: #fff;
+      padding: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+    }
+    #header label {
+      margin-right: 5px;
+    }
+    #header select,
+    #header input[type="radio"] {
+      margin-right: 15px;
+      font-size: 1rem;
+    }
+    /* Contenedor de simulaciones */
+    #sim-container {
+      height: calc(100% - 60px); /* Ajusta según la altura de la cabecera */
+      display: flex;
+      flex-direction: row;
+    }
+    /* Los iframes ocuparán el total del espacio asignado */
+    iframe {
+      border: none;
+      flex: 1;
+      height: 100%;
+    }
+    /* Oculta elementos cuando no se usan */
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <!-- Panel de controles -->
+  <div id="header">
+    <!-- Selección de modo -->
+    <div>
+      <label>
+        <input type="radio" name="mode" value="single" checked>
+        Visualización única
+      </label>
+      <label>
+        <input type="radio" name="mode" value="dual">
+        Comparar dos
+      </label>
+    </div>
+    <!-- Controles para modo único -->
+    <div id="single-controls">
+      <label for="sim-single">Selecciona simulación:</label>
+      <select id="sim-single">
+        <option value="deepseek">Deepseek R1</option>
+        <option value="o1">o1</option>
+        <option value="o3mini">o3‑mini</option>
+        <option value="o3minihigh">o3‑mini (high)</option>
+      </select>
+    </div>
+    <!-- Controles para modo dual -->
+    <div id="dual-controls" class="hidden">
+      <label for="sim-left">Simulación Izquierda:</label>
+      <select id="sim-left">
+        <option value="deepseek">Deepseek R1</option>
+        <option value="o1">o1</option>
+        <option value="o3mini">o3‑mini</option>
+        <option value="o3minihigh">o3‑mini (high)</option>
+      </select>
+      <label for="sim-right">Simulación Derecha:</label>
+      <select id="sim-right">
+        <option value="deepseek">Deepseek R1</option>
+        <option value="o1">o1</option>
+        <option value="o3mini">o3‑mini</option>
+        <option value="o3minihigh">o3‑mini (high)</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Contenedor de iframes para mostrar las simulaciones -->
+  <div id="sim-container">
+    <iframe id="iframe-left"></iframe>
+    <iframe id="iframe-right" class="hidden"></iframe>
+  </div>
+
+  <!-- Las simulaciones se insertan sin modificar en plantillas ocultas -->
+  <template id="sim-deepseek">
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Parabolic Motion Simulation</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+        }
+        #container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        #ball {
+            width: 20px;
+            height: 20px;
+            background: #ff0000;
+            border-radius: 50%;
+            position: absolute;
+            transform: translate(0, 0);
+            will-change: transform;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="ball"></div>
+    </div>
+
+    <script>
+        const container = document.getElementById('container');
+        const ball = document.getElementById('ball');
+        let isMoving = false;
+        let lastTime = performance.now();
+        let mouseX = 0;
+        let mouseY = 0;
+        const g = 9.81; // m/s²
+
+        let state = {
+            x: 0,
+            y: container.clientHeight / 2,
+            vx: 0,
+            vy: 0
+        };
+
+        // Mouse tracking
+        container.addEventListener('mousemove', (e) => {
+            const rect = container.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+        });
+
+        // Spacebar handler
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                launch();
+                e.preventDefault();
+            }
+        });
+
+        function launch() {
+            state = {
+                x: 0,
+                y: container.clientHeight / 2,
+                vx: 0,
+                vy: 0
+            };
+
+            const dx = mouseX - state.x;
+            const dy = mouseY - state.y;
+            const mag = Math.sqrt(dx*dx + dy*dy);
+            const speed = 100 + Math.random() * 100;
+
+            if (mag > 0) {
+                state.vx = (dx/mag) * speed;
+                state.vy = (dy/mag) * speed;
+            } else {
+                state.vy = -speed;
+            }
+
+            isMoving = true;
+            animate();
+        }
+
+        function derivative(s) {
+            return {
+                dx: s.vx,
+                dy: s.vy,
+                dvx: 0,
+                dvy: g
+            };
+        }
+
+        function rk4Integrate(state, dt) {
+            const k1 = derivative(state);
+            const k2 = derivative({
+                x: state.x + k1.dx*dt/2,
+                y: state.y + k1.dy*dt/2,
+                vx: state.vx + k1.dvx*dt/2,
+                vy: state.vy + k1.dvy*dt/2
+            });
+            const k3 = derivative({
+                x: state.x + k2.dx*dt/2,
+                y: state.y + k2.dy*dt/2,
+                vx: state.vx + k2.dvx*dt/2,
+                vy: state.vy + k2.dvy*dt/2
+            });
+            const k4 = derivative({
+                x: state.x + k3.dx*dt,
+                y: state.y + k3.dy*dt,
+                vx: state.vx + k3.dvx*dt,
+                vy: state.vy + k3.dvy*dt
+            });
+
+            return {
+                x: state.x + (k1.dx + 2*k2.dx + 2*k3.dx + k4.dx)*dt/6,
+                y: state.y + (k1.dy + 2*k2.dy + 2*k3.dy + k4.dy)*dt/6,
+                vx: state.vx + (k1.dvx + 2*k2.dvx + 2*k3.dvx + k4.dvx)*dt/6,
+                vy: state.vy + (k1.dvy + 2*k2.dvy + 2*k3.dvy + k4.dvy)*dt/6
+            };
+        }
+
+        function animate() {
+            if (!isMoving) return;
+
+            const now = performance.now();
+            const dt = (now - lastTime) / 1000;
+            lastTime = now;
+
+            state = rk4Integrate(state, dt);
+            ball.style.transform = `translate(${state.x}px, ${state.y}px)`;
+
+            requestAnimationFrame(animate);
+        }
+    </script>
+</body>
+</html>
+  </template>
+
+  <template id="sim-o1">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Parabolic Motion Simulation</title>
+  <style>
+    /* Container for the simulation */
+    #simulationContainer {
+      position: relative;
+      width: 800px;       /* You can adjust these dimensions as desired */
+      height: 600px;      /* You can adjust these dimensions as desired */
+      border: 1px solid #000;
+      margin: 0 auto;     /* Center the container horizontally on the page */
+      overflow: hidden;   /* Hide anything that moves outside this area */
+      background: #f0f0f0;
+    }
+
+    /* The ball - a circular element */
+    #ball {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      background-color: red;
+      border-radius: 50%;
+      transform: translate(0, 0);
+      pointer-events: none; /* So mouse events pass through the ball */
+    }
+  </style>
+</head>
+<body>
+<div id="simulationContainer">
+  <div id="ball"></div>
+</div>
+
+<script>
+  // ------------------------------
+  // Simulation parameters & setup
+  // ------------------------------
+  const container   = document.getElementById('simulationContainer');
+  const ball        = document.getElementById('ball');
+  const gravity     = 9.81;    // px/s^2 (treating 1px ~ 1 unit for simplicity)
+  let containerWidth, containerHeight;
+
+  // Position and velocity of the ball
+  let x, y, vx, vy;
+  
+  // Mouse position
+  let mouseX = 0, mouseY = 0;
+  
+  // Flag to indicate if the ball is in motion
+  let isLaunched = false;
+  
+  // Timestamp of the last frame
+  let lastTime = null;
+
+  // Initialize container dimensions and ball's initial position
+  function init() {
+    containerWidth  = container.clientWidth;
+    containerHeight = container.clientHeight;
+    resetBall();
+  }
+
+  // Place the ball at the starting position (x=0, y=containerHeight/2) with zero velocity
+  function resetBall() {
+    x  = 0;
+    y  = containerHeight / 2;
+    vx = 0;
+    vy = 0;
+
+    // Apply initial transform to place the ball
+    updateBallPosition();
+  }
+
+  // Listen for mouse movement to adjust the angle for the next launch
+  container.addEventListener('mousemove', (event) => {
+    // Get bounding rect to convert mouse coords to container coords
+    const rect = container.getBoundingClientRect();
+    mouseX = event.clientX - rect.left;
+    mouseY = event.clientY - rect.top;
+  });
+
+  // Listen for keydown (space) to trigger the launch
+  window.addEventListener('keydown', (event) => {
+    if (event.code === 'Space') {
+      launch();
+    }
+  });
+
+  // Launch the ball with a random velocity [100..200 px/s] in the direction of the mouse
+  function launch() {
+    // Reset ball before each launch (optional; comment out if you only want a single launch)
+    resetBall();
+    isLaunched = true;
+
+    // Calculate angle from ball's current position (x,y) to the mouse (mouseX, mouseY)
+    const dx = mouseX - x;
+    const dy = mouseY - y;
+    const angle = Math.atan2(dy, dx);
+
+    // Random magnitude between 100 and 200
+    const speed = 100 + Math.random() * 100;
+
+    // Set velocities
+    vx = speed * Math.cos(angle);
+    vy = speed * Math.sin(angle);
+  }
+
+  // Update the ball's CSS transform
+  function updateBallPosition() {
+    ball.style.transform = `translate(${x}px, ${y}px)`;
+  }
+
+  // ------------------------------
+  // Runge-Kutta 4th order method
+  // ------------------------------
+  // We have the system:
+  //   x'(t) = vx
+  //   y'(t) = vy
+  //   vx'(t) = 0        (no horizontal acceleration)
+  //   vy'(t) = gravity  (constant downward acceleration)
+  // 
+  // state = { x, y, vx, vy }
+
+  function derivatives(state) {
+    return {
+      dx:  state.vx,
+      dy:  state.vy,
+      dvx: 0,
+      dvy: gravity
+    };
+  }
+
+  // Perform one RK4 step
+  function rungeKutta4(state, dt) {
+    // k1
+    const k1 = derivatives(state);
+
+    // state + 0.5*k1*dt
+    const s2 = {
+      x:  state.x  + 0.5*k1.dx*dt,
+      y:  state.y  + 0.5*k1.dy*dt,
+      vx: state.vx + 0.5*k1.dvx*dt,
+      vy: state.vy + 0.5*k1.dvy*dt
+    };
+    const k2 = derivatives(s2);
+
+    // state + 0.5*k2*dt
+    const s3 = {
+      x:  state.x  + 0.5*k2.dx*dt,
+      y:  state.y  + 0.5*k2.dy*dt,
+      vx: state.vx + 0.5*k2.dvx*dt,
+      vy: state.vy + 0.5*k2.dvy*dt
+    };
+    const k3 = derivatives(s3);
+
+    // state + k3*dt
+    const s4 = {
+      x:  state.x  + k3.dx*dt,
+      y:  state.y  + k3.dy*dt,
+      vx: state.vx + k3.dvx*dt,
+      vy: state.vy + k3.dvy*dt
+    };
+    const k4 = derivatives(s4);
+
+    // Combine
+    const dx = (k1.dx + 2*k2.dx + 2*k3.dx + k4.dx) / 6.0;
+    const dy = (k1.dy + 2*k2.dy + 2*k3.dy + k4.dy) / 6.0;
+    const dvx= (k1.dvx+ 2*k2.dvx+2*k3.dvx+ k4.dvx)/ 6.0;
+    const dvy= (k1.dvy+ 2*k2.dvy+2*k3.dvy+ k4.dvy)/ 6.0;
+
+    return {
+      x:  state.x  + dx*dt,
+      y:  state.y  + dy*dt,
+      vx: state.vx + dvx*dt,
+      vy: state.vy + dvy*dt
+    };
+  }
+
+  // ------------------------------
+  // Animation loop: 60 FPS
+  // ------------------------------
+  function animate(timestamp) {
+    if (lastTime === null) {
+      // First frame: just set lastTime
+      lastTime = timestamp;
+    }
+    // Compute time delta in seconds
+    const dt = (timestamp - lastTime) / 1000;
+    lastTime = timestamp;
+
+    // Update ball position if launched
+    if (isLaunched) {
+      const state = { x, y, vx, vy };
+      const newState = rungeKutta4(state, dt);
+
+      x  = newState.x;
+      y  = newState.y;
+      vx = newState.vx;
+      vy = newState.vy;
+
+      // Update the visual position
+      updateBallPosition();
+    }
+
+    // Request the next frame
+    requestAnimationFrame(animate);
+  }
+
+  // Start everything
+  init();
+  requestAnimationFrame(animate);
+</script>
+</body>
+</html>
+  </template>
+
+  <template id="sim-o3mini">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Parabolic Motion Simulation</title>
+  <style>
+    /* Remove default margins and hide scrollbars */
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      height: 100%;
+    }
+    /* Simulation container takes up the full viewport */
+    #container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      background: #f0f0f0;
+    }
+    /* Ball styling: a small red circle */
+    #ball {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      background-color: red;
+      border-radius: 50%;
+      /* Start with no translation */
+      transform: translate(0, 0);
+    }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <div id="ball"></div>
+  </div>
+  <script>
+    // Get DOM elements
+    const container = document.getElementById('container');
+    const ball = document.getElementById('ball');
+
+    // Set initial ball position: (0, screenHeight/2)
+    let ballPos = {
+      x: 0,
+      y: window.innerHeight / 2
+    };
+
+    // Ball velocity (pixels/second)
+    let ballVel = { x: 0, y: 0 };
+
+    // Constant gravity (pixels per second squared)
+    const gravity = 9.81;
+
+    // Flag to determine if the ball has been launched
+    let launched = false;
+
+    // Track mouse position; initialize at center of screen
+    let mousePos = {
+      x: window.innerWidth / 2,
+      y: window.innerHeight / 2
+    };
+
+    // Update the ball's position on screen using CSS transform
+    function updateBallDisplay() {
+      ball.style.transform = `translate(${ballPos.x}px, ${ballPos.y}px)`;
+    }
+
+    // Initial display update
+    updateBallDisplay();
+
+    // Listen for mouse movement to update mousePos
+    container.addEventListener('mousemove', (event) => {
+      mousePos = {
+        x: event.clientX,
+        y: event.clientY
+      };
+    });
+
+    // Listen for the spacebar key to launch the ball
+    window.addEventListener('keydown', (event) => {
+      // Only trigger on the first spacebar press (avoid re-launching mid-flight)
+      if (event.code === 'Space' && !launched) {
+        // Calculate angle from ball to current mouse position
+        const dx = mousePos.x - ballPos.x;
+        const dy = mousePos.y - ballPos.y;
+        const angle = Math.atan2(dy, dx);
+
+        // Random initial speed between 100 and 200 pixels/second
+        const speed = 100 + Math.random() * 100;
+        ballVel.x = speed * Math.cos(angle);
+        ballVel.y = speed * Math.sin(angle);
+
+        launched = true;
+      }
+    });
+
+    // Runge-Kutta 4th Order Method for one time step dt (in seconds)
+    function rk4(dt) {
+      // For our system:
+      // dx/dt = vx
+      // dvx/dt = 0
+      // dy/dt = vy
+      // dvy/dt = gravity
+
+      // k1: Evaluate at beginning of interval
+      const k1_vx = 0;
+      const k1_vy = gravity;
+      const k1_x  = ballVel.x;
+      const k1_y  = ballVel.y;
+
+      // k2: Evaluate at midpoint using k1
+      const k2_vx = 0;
+      const k2_vy = gravity;
+      const k2_x  = ballVel.x + k1_vx * dt / 2;
+      const k2_y  = ballVel.y + k1_vy * dt / 2;
+
+      // k3: Evaluate at midpoint using k2
+      const k3_vx = 0;
+      const k3_vy = gravity;
+      const k3_x  = ballVel.x + k2_vx * dt / 2;
+      const k3_y  = ballVel.y + k2_vy * dt / 2;
+
+      // k4: Evaluate at end using k3
+      const k4_vx = 0;
+      const k4_vy = gravity;
+      const k4_x  = ballVel.x + k3_vx * dt;
+      const k4_y  = ballVel.y + k3_vy * dt;
+
+      // Update velocity using weighted average of slopes
+      ballVel.x += (dt / 6) * (k1_vx + 2 * k2_vx + 2 * k3_vx + k4_vx);
+      ballVel.y += (dt / 6) * (k1_vy + 2 * k2_vy + 2 * k3_vy + k4_vy);
+
+      // Update position similarly
+      ballPos.x += (dt / 6) * (k1_x + 2 * k2_x + 2 * k3_x + k4_x);
+      ballPos.y += (dt / 6) * (k1_y + 2 * k2_y + 2 * k3_y + k4_y);
+    }
+
+    // Animation loop using requestAnimationFrame for 60 FPS
+    let lastTime = null;
+    function animate(timestamp) {
+      if (!lastTime) {
+        lastTime = timestamp;
+      }
+      // Calculate time difference in seconds
+      const dt = (timestamp - lastTime) / 1000;
+      lastTime = timestamp;
+
+      if (launched) {
+        rk4(dt);
+        updateBallDisplay();
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    // Start the animation loop
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>
+  </template>
+
+  <template id="sim-o3minihigh">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Parabolic Motion Physics Simulation</title>
+  <style>
+    /* Simulation container fills the viewport */
+    #simulation-container {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+      background: #f0f0f0;
+      overflow: hidden;
+    }
+    /* The ball: a red circle */
+    #ball {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background-color: red;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="simulation-container">
+    <div id="ball"></div>
+  </div>
+  <script>
+    // Get references to DOM elements.
+    const container = document.getElementById('simulation-container');
+    const ball = document.getElementById('ball');
+
+    // Physics constants and state variables.
+    const gravity = 9.81; // Constant acceleration (pixels/s²)
+    let state = { x: 0, y: 0, vx: 0, vy: 0 }; // Ball state: position and velocity.
+    let running = false;
+    let lastTime = null;
+    let mouseX = 0, mouseY = 0;
+
+    // Track the mouse position to influence the launch direction.
+    window.addEventListener("mousemove", (e) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+    });
+
+    // Listen for the spacebar to trigger a launch.
+    window.addEventListener("keydown", (e) => {
+      if (e.code === "Space") {
+        launch();
+      }
+    });
+
+    // Launch the ball using mouse direction and a random initial speed.
+    function launch() {
+      // Set initial ball position: (0, containerHeight/2)
+      const containerHeight = container.clientHeight;
+      state.x = 0;
+      state.y = containerHeight / 2;
+      
+      // Calculate launch direction based on the current mouse position.
+      const dx = mouseX - state.x;
+      const dy = mouseY - state.y;
+      const angle = Math.atan2(dy, dx);
+      
+      // Random initial speed between 100 and 200 pixels per second.
+      const speed = Math.random() * 100 + 100;
+      state.vx = speed * Math.cos(angle);
+      state.vy = speed * Math.sin(angle);
+      
+      running = true;
+      lastTime = null;
+      requestAnimationFrame(animate);
+    }
+
+    // Runge-Kutta 4th order integration for updating state.
+    function rk4(currentState, dt) {
+      // Helper: returns the derivative of the state.
+      function derivatives(s) {
+        return {
+          dx: s.vx,
+          dvx: 0,
+          dy: s.vy,
+          dvy: gravity
+        };
+      }
+
+      const k1 = derivatives(currentState);
+      const s2 = {
+        x: currentState.x + k1.dx * dt / 2,
+        vx: currentState.vx + k1.dvx * dt / 2,
+        y: currentState.y + k1.dy * dt / 2,
+        vy: currentState.vy + k1.dvy * dt / 2
+      };
+      const k2 = derivatives(s2);
+      const s3 = {
+        x: currentState.x + k2.dx * dt / 2,
+        vx: currentState.vx + k2.dvx * dt / 2,
+        y: currentState.y + k2.dy * dt / 2,
+        vy: currentState.vy + k2.dvy * dt / 2
+      };
+      const k3 = derivatives(s3);
+      const s4 = {
+        x: currentState.x + k3.dx * dt,
+        vx: currentState.vx + k3.dvx * dt,
+        y: currentState.y + k3.dy * dt,
+        vy: currentState.vy + k3.dvy * dt
+      };
+      const k4 = derivatives(s4);
+
+      return {
+        x: currentState.x + (dt / 6) * (k1.dx + 2 * k2.dx + 2 * k3.dx + k4.dx),
+        vx: currentState.vx + (dt / 6) * (k1.dvx + 2 * k2.dvx + 2 * k3.dvx + k4.dvx),
+        y: currentState.y + (dt / 6) * (k1.dy + 2 * k2.dy + 2 * k3.dy + k4.dy),
+        vy: currentState.vy + (dt / 6) * (k1.dvy + 2 * k2.dvy + 2 * k3.dvy + k4.dvy)
+      };
+    }
+
+    // Animation loop running at ~60 FPS.
+    function animate(timestamp) {
+      if (!lastTime) lastTime = timestamp;
+      const dt = (timestamp - lastTime) / 1000; // Convert ms to seconds.
+      lastTime = timestamp;
+
+      // Update the state using the RK4 method.
+      state = rk4(state, dt);
+
+      // Update ball's position using CSS transform.
+      ball.style.transform = `translate(${state.x}px, ${state.y}px)`;
+
+      // Continue the animation loop.
+      if (running) {
+        requestAnimationFrame(animate);
+      }
+    }
+  </script>
+</body>
+</html>
+  </template>
+
+  <script>
+    // Construimos un objeto con cada simulación leyendo el contenido de cada <template>
+    const simulations = {
+      deepseek: document.getElementById('sim-deepseek').innerHTML,
+      o1: document.getElementById('sim-o1').innerHTML,
+      o3mini: document.getElementById('sim-o3mini').innerHTML,
+      o3minihigh: document.getElementById('sim-o3minihigh').innerHTML
+    };
+
+    // Función para actualizar los iframes según el modo y selección elegida
+    function updateSimulations() {
+      const mode = document.querySelector('input[name="mode"]:checked').value;
+      const iframeLeft = document.getElementById('iframe-left');
+      const iframeRight = document.getElementById('iframe-right');
+
+      if (mode === 'single') {
+        const selectedSim = document.getElementById('sim-single').value;
+        iframeLeft.srcdoc = simulations[selectedSim];
+        iframeLeft.style.display = 'block';
+        iframeRight.style.display = 'none';
+      } else { // modo dual
+        const leftSim = document.getElementById('sim-left').value;
+        const rightSim = document.getElementById('sim-right').value;
+        iframeLeft.srcdoc = simulations[leftSim];
+        iframeRight.srcdoc = simulations[rightSim];
+        iframeLeft.style.display = 'block';
+        iframeRight.style.display = 'block';
+      }
+    }
+
+    // Control de cambios en el modo de visualización
+    const modeRadios = document.querySelectorAll('input[name="mode"]');
+    modeRadios.forEach(radio => {
+      radio.addEventListener('change', () => {
+        const mode = document.querySelector('input[name="mode"]:checked').value;
+        if (mode === 'single') {
+          document.getElementById('single-controls').classList.remove('hidden');
+          document.getElementById('dual-controls').classList.add('hidden');
+        } else {
+          document.getElementById('single-controls').classList.add('hidden');
+          document.getElementById('dual-controls').classList.remove('hidden');
+        }
+        updateSimulations();
+      });
+    });
+
+    // Actualizar al cambiar la selección en los menús desplegables
+    document.getElementById('sim-single').addEventListener('change', updateSimulations);
+    document.getElementById('sim-left').addEventListener('change', updateSimulations);
+    document.getElementById('sim-right').addEventListener('change', updateSimulations);
+
+    // Cargar inicialmente la simulación seleccionada
+    updateSimulations();
+  </script>
+</body>
+</html>
